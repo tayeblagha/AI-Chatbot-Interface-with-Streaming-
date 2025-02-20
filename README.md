@@ -49,6 +49,10 @@ Ensure you have the following installed:
 4. Create a `.env` file and set your Groq API key:
    ```sh
    GROQ_API_KEY=your_groq_api_key_here
+   AI_DB_USERNAME=postgres  (put your username instead)
+   AI_DB_PASSWORD=root  (put your passwordinstead)
+   AI_DB_DATABASE=aichatbot  (put your Database name instead)
+
    ```
 5. Run the FastAPI server:
    ```sh
