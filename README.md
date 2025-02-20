@@ -34,8 +34,8 @@ Ensure you have the following installed:
 ### Backend Setup
 1. Clone the repository:
    ```sh
-   git clone https://github.com/your-repo-name.git
-   cd your-repo-name
+   git clone https://github.com/tayeblagha/AI-Chatbot-Interface-with-Streaming-.git
+   cd ai-chatbackend
    ```
 2. Create a virtual environment and activate it:
    ```sh
@@ -59,7 +59,7 @@ Ensure you have the following installed:
 ### Frontend Setup
 1. Navigate to the `frontend` directory:
    ```sh
-   cd frontend
+   cd ai-chat(frontend)
    ```
 2. Install dependencies:
    ```sh
