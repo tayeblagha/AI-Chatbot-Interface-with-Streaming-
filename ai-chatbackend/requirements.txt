@@ -7,3 +7,7 @@ langchain-core
 langchain-groq
 groq
 python-dotenv
+sqlalchemy
+psycopg2-binary
+passlib[bcrypt]
+pyjwt

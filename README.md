@@ -52,7 +52,7 @@ Ensure you have the following installed:
    ```
 5. Run the FastAPI server:
    ```sh
-   uvicorn app:app --reload
+   uvicorn main:app --reload
    ```
    The backend should now be running at `http://127.0.0.1:8000`
 
