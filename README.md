@@ -13,7 +13,7 @@ This project is a real-time AI chatbot application built with Next.js (React) fo
 ### Frontend
 - Next.js (React)
 - WebSockets
-- Tailwind CSS (for styling)
+- Tailwind & ShadCN CSS
 
 ### Backend
 - FastAPI
