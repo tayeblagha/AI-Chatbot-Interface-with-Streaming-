@@ -1,197 +1,201 @@
 import React, { useState, useEffect, useRef } from "react";
-import styles from "./aichat.module.css";
-import UserInfo from "../Authentication/UserInfo";
+import axios from 'axios';
 import { useRouter } from "next/router";
+import Cookies from "js-cookie";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import useUserInfo from "../Authentication/UseUserInfo";
+import Spinner from "./Spinner";
 
-
-function AIChatbot() {
+const AIChatbot = () => {
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState("");
-  const [conversationId, setConversationId] = useState("");
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [sessions, setSessions] = useState([]);
+  const [currentSession, setCurrentSession] = useState(null);
   const ws = useRef(null);
   const router = useRouter();
+  const { user, userReady } = useUserInfo();
+  const token = Cookies.get("token");
+  let buffer = "";
+  let typingTimeout;
 
-  const { user, userReady } = useUserInfo(); // ✅ Fetch user info properly
+  const inputRef = useRef(null); // Create a ref for the input box
 
-  // Redirect if user is not available after checking is complete
   useEffect(() => {
     if (userReady && !user) {
       router.push("/login");
+    } else {
+      fetchSessions();
     }
-  }, [user, userReady, router]);
+  }, [user, userReady]);
 
-  // Close WebSocket when unmounting
   useEffect(() => {
-    return () => {
-      if (ws.current) {
-        ws.current.close();
-      }
-    };
-  }, []);
+    if (currentSession !== null && inputRef.current) {
+      setTimeout(() => {
+        inputRef.current.focus();
+      }, 100);
+    }
+  }, [currentSession]);
 
-  const connectWebSocket = () => {
-    if (!conversationId) {
-      alert("Please enter a conversation ID");
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    if (currentSession !== null) {
+      localStorage.setItem(`messages_${currentSession}`, JSON.stringify(messages));
+    }
+  }, [messages, currentSession]);
+
+  const fetchSessions = async () => {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_HOST}/sessions/messages?token=${token}`);
+    if (response.ok) {
+      const data = await response.json();
+      setSessions(data);
+    }
+  };
+
+  const switchSession = async (sessionNumber) => {
+    if (sessionNumber == null) {
       return;
     }
 
-    ws.current = new WebSocket(
-      `${process.env.NEXT_PUBLIC_WSHOST}/ws/${conversationId}`
-    );
+    if (ws.current) {
+      ws.current.close();
+      setIsConnected(false);
+    }
 
-    ws.current.onopen = () => {
-      setIsConnected(true);
-      setMessages((prev) => [
-        ...prev,
-        { role: "system", content: "Connected to conversation " + conversationId },
-      ]);
-    };
+    setMessages([]);
+    setCurrentSession(sessionNumber);
+
+    // Load messages from localStorage first
+    const savedMessages = localStorage.getItem(`messages_${sessionNumber}`);
+    if (savedMessages) {
+      setMessages(JSON.parse(savedMessages));
+    } else {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_HOST}/sessions/${sessionNumber}/messages?token=${token}`);
+      if (response.ok) {
+        const data = await response.json();
+        setMessages(data);
+      }
+    }
+
+    connectWebSocket(sessionNumber);
+    inputRef.current.focus();
+  };
+
+  const connectWebSocket = (sessionNumber) => {
+    ws.current = new WebSocket(`${process.env.NEXT_PUBLIC_WSHOST}/ws/${sessionNumber}?token=${token}`);
+    ws.current.onopen = () => setIsConnected(true);
 
     ws.current.onmessage = (event) => {
       setIsLoading(false);
-      const chunk = event.data;
-      setMessages((prev) => {
-        const lastMessage = prev[prev.length - 1];
-        if (lastMessage?.role === "assistant") {
-          return [
-            ...prev.slice(0, -1),
-            { ...lastMessage, content: lastMessage.content + chunk },
-          ];
+      buffer += event.data;
+
+      clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => {
+        if (buffer) {
+          setMessages((prev) => [...prev, { role: "assistant", content: buffer }]);
+          buffer = "";
         }
-        return [...prev, { role: "assistant", content: chunk }];
-      });
+      }, 500); // Adjust timing as needed
     };
 
-    ws.current.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      setMessages((prev) => [
-        ...prev,
-        { role: "error", content: "Connection error: " + error.message },
-      ]);
-    };
-
-    ws.current.onclose = (event) => {
-      setIsConnected(false);
-      if (event.code === 4000) {
-        setMessages((prev) => [
-          ...prev,
-          { role: "system", content: "Conversation closed by server" },
-        ]);
+    ws.current.onclose = () => {
+      if (buffer) {
+        setMessages((prev) => [...prev, { role: "assistant", content: buffer }]);
+        buffer = "";
       }
+      setIsConnected(false);
     };
   };
 
   const sendMessage = () => {
     if (!inputMessage.trim() || !isConnected) return;
-
-    const message = { role: "user", content: inputMessage.trim() };
-    setMessages((prev) => [...prev, message]);
     setIsLoading(true);
-
-    try {
-      ws.current.send(JSON.stringify({ message: message.content }));
-    } catch (error) {
-      console.error("Error sending message:", error);
-      setMessages((prev) => [
-        ...prev,
-        { role: "error", content: "Error sending message: " + error.message },
-      ]);
-      setIsLoading(false);
-    }
-
+    ws.current.send(JSON.stringify({ message: inputMessage, user: user?.sub }));
+    setMessages((prev) => [...prev, { role: "user", content: inputMessage }]);
     setInputMessage("");
   };
 
-  const closeConversation = async () => {
+
+  async function createNewSession() {
+    const url = `${process.env.NEXT_PUBLIC_HOST}/create-session?token=${token}`;
+  
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_HOST}/conversations/${conversationId}`,
-        { method: "DELETE" }
-      );
-
-      if (!response.ok) throw new Error("Failed to close conversation");
-
-      if (ws.current) {
-        ws.current.close();
-      }
-
+      const response = await axios.post(url, {});
+      const data = response.data;
+      console.log(data);
+      const sessionNumber = data.session_number;
+      setCurrentSession(sessionNumber);
       setMessages([]);
-      setConversationId("");
+      connectWebSocket(sessionNumber);
+      fetchSessions()
     } catch (error) {
-      setMessages((prev) => [
-        ...prev,
-        { role: "error", content: "Error closing conversation: " + error.message },
-      ]);
+      console.error("Failed to create a new session", error);
     }
-  };
-
-  const Spinner = () => <div className="spinner" />;
-
-  // Ensure the user is loaded before rendering
-  if (!userReady) return <p>Loading...</p>;
+  }
+  
 
   return (
-    <div className={styles}>
-      <div className="min-h-screen bg-gray-100 py-8 px-4">
-        <div className="chat-container">
-          <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">AI Chat</h1>
-          <h1>Welcome {user ? user.sub : "Guest"}</h1>
-
-          <div className="connection-controls">
-            <input
-              type="text"
-              value={conversationId}
-              onChange={(e) => setConversationId(e.target.value)}
-              placeholder="Enter Conversation ID"
-              disabled={isConnected}
-              className="flex-1"
-            />
+    <div className="flex min-h-screen">
+      <aside className="w-64 bg-gray-900 text-white p-4">
+        <Button onClick={createNewSession}>
+          New Chat
+          <img src="/plus-dialogue.svg" alt="Description" width={35} height={50} />
+        </Button>
+        <br />
+        <h2 className="text-lg font-semibold">Previous Sessions</h2>
+        <ScrollArea className="h-[calc(100vh-100px)] overflow-y-auto">
+          {sessions.map((session) => (
             <button
-              onClick={isConnected ? () => ws.current?.close() : connectWebSocket}
-              className={isConnected ? "disconnect" : "connect"}
+              key={session.session_number}
+              className={`block w-full text-left p-2 rounded-lg ${session.session_number === currentSession ? "bg-gray-700" : "hover:bg-gray-800"}`}
+              onClick={() => switchSession(session.session_number)}
             >
-              {isConnected ? "Disconnect" : "Connect"}
+              Session {session.session_number}
             </button>
-            <button onClick={closeConversation} disabled={!isConnected} className="close-btn">
-              Close Conversation
-            </button>
-          </div>
+          ))}
+        </ScrollArea>
+        <Separator className="my-2" />
+      </aside>
 
-          <div className="messages">
-            {messages.map((message, index) => (
-              <div key={index} className={`message ${message.role}`}>
-                <span className="role">{message.role}:</span>
-                <span className="content">{message.content}</span>
-              </div>
-            ))}
-            {isLoading && <Spinner />}
-          </div>
-
-          <div className="chat-input-container">
-            <textarea
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  sendMessage();
-                }
-              }}
-              placeholder="Type your message..."
-              disabled={!isConnected}
-              rows={3}
-            />
-            <button onClick={sendMessage} disabled={!isConnected} className="self-end">
-              Send
-            </button>
-          </div>
+      <main className="flex-1 bg-gray-100 p-4">
+        <h1 className="text-2xl font-bold">AI Chat</h1>
+        <div className="mt-4 border p-4 rounded-lg bg-white h-[70vh] overflow-y-auto">
+          {messages.map((msg, index) => (
+            <div key={index} className="mb-2">
+              <strong>{msg.role === "assistant" ? msg.role : user.sub}:</strong> {msg.content}
+            </div>
+          ))}
+          {isLoading && (
+            <div className="flex mt-4">
+              AI Thinking <Spinner />
+            </div>
+          )}
         </div>
-      </div>
+
+        <div className="mt-2 flex gap-2">
+          <textarea
+            ref={inputRef}  // Apply the ref to the input
+            type="text"
+            className="border p-2 flex-1 rounded"
+            value={inputMessage}
+            onChange={(e) => setInputMessage(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+              }
+            }}
+          />
+          <Button onClick={sendMessage} disabled={!isConnected || isLoading}>
+            {isLoading ? "Thinking..." : "Send"}
+          </Button>
+        </div>
+      </main>
     </div>
   );
-}
+};
 
 export default AIChatbot;
