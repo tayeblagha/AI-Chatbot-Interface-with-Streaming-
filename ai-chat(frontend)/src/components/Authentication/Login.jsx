@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Cookies from 'js-cookie';
 import axios from 'axios';
 import { useRouter } from 'next/router';
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,11 +14,12 @@ function LoginForm() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const response = await axios.post('http://localhost:8000/login', {
+            const response = await axios.post(`${process.env.NEXT_PUBLIC_HOST}/login`, {
                 username,
                 password,
             });
             if (response.data.access_token) {
+                Cookies.set('token', response.data.access_token, { expires: 7 }); // Store token for 7 days
                 router.push('/chabot');
             }
         } catch (error) {

@@ -19,7 +19,7 @@ function RegisterForm() {
     e.preventDefault();
     setError(null);
     try {
-      await axios.post('http://localhost:8000/register', formData);
+      await axios.post(`${process.env.NEXT_PUBLIC_WSHOST}/register`, formData);
       alert('User registered successfully');
       router.push('/login');
     } catch (error) {
