@@ -16,6 +16,27 @@ This project is a real-time AI chatbot application built with Next.js (React) fo
 - Tailwind & ShadCN CSS
 
 ### Backend
+
+ai-chatbot/
+├── app/
+│   ├── core/
+│   │   ├── config.py
+│   │   └── database.py
+│   ├── models/
+│   │   └── models.py
+│   ├── schemas/
+│   │   └── schemas.py
+│   ├── routes/
+│   │   ├── auth.py
+│   │   └── chat.py
+│   ├── dependencies/
+│   │   └── dependencies.py
+│   ├── services/
+│   │   ├── security.py
+│   │   └── groq_service.py
+│   └── main.py
+├── .env
+└── requirements.txt
 - FastAPI
 - Groq API
 - WebSockets
