@@ -98,7 +98,7 @@ Ensure you have the following installed:
 This project is licensed under the MIT License.
 
 ## Author
-Tayeb Lagha - [GitHub Profile](https://github.com/your-github)
+Tayeb Lagha - [GitHub Profile](https://github.com/tayeblagha)
 
 ## Acknowledgments
 - [FastAPI Documentation](https://fastapi.tiangolo.com/)
