@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import axios from 'axios';
+import axios from "axios";
 import { useRouter } from "next/router";
 import Cookies from "js-cookie";
 import { Button } from "@/components/ui/button";
@@ -35,13 +35,13 @@ const AIChatbot = () => {
       setSessions([]);
       setCurrentSession(null);
       setSessionsLoaded(false);
-      
+
       // Close existing WebSocket connection
       if (ws.current) {
         ws.current.close();
         setIsConnected(false);
       }
-      
+
       // Fetch fresh sessions for new user
       fetchSessions();
     }
@@ -56,7 +56,10 @@ const AIChatbot = () => {
   // User-specific localStorage persistence
   useEffect(() => {
     if (currentSession !== null && user?.sub) {
-      localStorage.setItem(`messages_${user.sub}_${currentSession}`, JSON.stringify(messages));
+      localStorage.setItem(
+        `messages_${user.sub}_${currentSession}`,
+        JSON.stringify(messages)
+      );
     }
   }, [messages, currentSession, user?.sub]);
 
@@ -79,10 +82,14 @@ const AIChatbot = () => {
     if (!sessionNumber || !user?.sub) return;
 
     // Update URL with current session
-    router.replace({
-      pathname: router.pathname,
-      query: { current_session: sessionNumber }
-    }, undefined, { shallow: true });
+    router.replace(
+      {
+        pathname: router.pathname,
+        query: { current_session: sessionNumber },
+      },
+      undefined,
+      { shallow: true }
+    );
 
     // Close existing WebSocket connection
     if (ws.current) {
@@ -91,9 +98,11 @@ const AIChatbot = () => {
     }
 
     setCurrentSession(sessionNumber);
-    
+
     // Load messages from user-specific cache or API
-    const cachedMessages = localStorage.getItem(`messages_${user.sub}_${sessionNumber}`);
+    const cachedMessages = localStorage.getItem(
+      `messages_${user.sub}_${sessionNumber}`
+    );
     if (cachedMessages) {
       setMessages(JSON.parse(cachedMessages));
     } else {
@@ -131,7 +140,10 @@ const AIChatbot = () => {
     clearTimeout(typingTimeout);
     typingTimeout = setTimeout(() => {
       if (buffer) {
-        setMessages((prev) => [...prev, { role: "assistant", content: buffer }]);
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: buffer },
+        ]);
         buffer = "";
       }
     }, 2000);
@@ -147,14 +159,16 @@ const AIChatbot = () => {
 
   const sendMessage = () => {
     if (!inputMessage.trim() || !isConnected || !user?.sub) return;
-    
+
     setIsLoading(true);
-    ws.current.send(JSON.stringify({ 
-      message: inputMessage, 
-      user: user.sub,
-      session_id: currentSession
-    }));
-    
+    ws.current.send(
+      JSON.stringify({
+        message: inputMessage,
+        user: user.sub,
+        session_id: currentSession,
+      })
+    );
+
     setMessages((prev) => [...prev, { role: "user", content: inputMessage }]);
     setInputMessage("");
     fetchSessions();
@@ -164,7 +178,7 @@ const AIChatbot = () => {
     try {
       // Clear previous user's cached messages
       if (user?.sub) {
-        Object.keys(localStorage).forEach(key => {
+        Object.keys(localStorage).forEach((key) => {
           if (key.startsWith(`messages_${user.sub}_`)) {
             localStorage.removeItem(key);
           }
@@ -183,10 +197,16 @@ const AIChatbot = () => {
   };
 
   useEffect(() => {
-    if (!router.isReady || !sessionsLoaded || currentSession !== null || !user?.sub) return;
+    if (
+      !router.isReady ||
+      !sessionsLoaded ||
+      currentSession !== null ||
+      !user?.sub
+    )
+      return;
 
     const urlSession = Number(router.query.current_session);
-    const validSession = sessions.find(s => s.session_number === urlSession);
+    const validSession = sessions.find((s) => s.session_number === urlSession);
 
     if (validSession) {
       switchSession(urlSession);
@@ -195,40 +215,49 @@ const AIChatbot = () => {
     } else {
       createNewSession();
     }
-  }, [router.isReady, sessionsLoaded, sessions, router.query.current_session, user]);
+  }, [
+    router.isReady,
+    sessionsLoaded,
+    sessions,
+    router.query.current_session,
+    user,
+  ]);
 
   return (
     <div className="flex min-h-screen mt-12">
       <aside className="w-64 bg-gray-900 text-white p-4">
-        <Button 
+        <Button
           className="w-full mt-2 py-4 bg-blue-600 hover:bg-blue-700"
           onClick={createNewSession}
         >
           New Chat
-          <img 
-            src="/plus-dialogue.svg" 
-            alt="New Chat" 
+          <img
+            src="/plus-dialogue.svg"
+            alt="New Chat"
             className="ml-2"
             width={24}
             height={24}
           />
         </Button>
-        
+
         <Separator className="my-4 bg-gray-700" />
-        
+
         <h2 className="text-lg font-semibold mb-2">Chat History</h2>
-        
+
         <ScrollArea className="h-[calc(100vh-180px)]">
           {sessions.map((session) => (
             <button
               key={session.session_number}
               onClick={() => switchSession(session.session_number)}
               className={`w-full p-3 text-left rounded-lg mb-1 transition-colors
-                ${session.session_number === currentSession 
-                  ? "bg-gray-700 text-white" 
-                  : "hover:bg-gray-800 text-gray-300"}`}
+                ${
+                  session.session_number === currentSession
+                    ? "bg-gray-700 text-white"
+                    : "hover:bg-gray-800 text-gray-300"
+                }`}
             >
-              {!session.title? "New Chat": session.title } <small>(Session {session.session_number})</small>
+              {!session.title ? "New Chat" : session.title}{" "}
+              <small>(Session {session.session_number})</small>
             </button>
           ))}
         </ScrollArea>
@@ -239,14 +268,14 @@ const AIChatbot = () => {
           <h1 className="text-2xl font-bold text-gray-800 mb-4">
             {currentSession ? `Session ${currentSession}` : "New Chat"}
           </h1>
-          
+
           <ScrollArea className="flex-1 mb-4 border rounded-lg p-4 bg-gray-50">
             {messages.map((msg, index) => (
               <div
                 key={index}
                 className={`mb-3 p-3 rounded-lg max-w-[80%] ${
-                  msg.role === "user" 
-                    ? "ml-auto bg-blue-100 border-blue-200" 
+                  msg.role === "user"
+                    ? "ml-auto bg-blue-100 border-blue-200"
                     : "bg-gray-100 border-gray-200"
                 }`}
               >
@@ -291,8 +320,8 @@ const AIChatbot = () => {
               </Button>
             </div>
             <div className="text-sm text-gray-500 mt-2">
-              {isConnected 
-                ? "Connected to chat server" 
+              {isConnected
+                ? "Connected to chat server"
                 : "Connecting to server..."}
             </div>
           </div>

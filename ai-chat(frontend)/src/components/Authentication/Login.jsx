@@ -24,6 +24,7 @@ function LoginForm() {
         e.preventDefault();
         setError(''); // Reset error message
         try {
+            console.log(username,password,)
             const response = await axios.post(`${process.env.NEXT_PUBLIC_HOST}/login`, {
                 username,
                 password,

@@ -4,7 +4,7 @@ import jwt
 from models.models import Session
 from sqlalchemy import desc, func
 from core.config import settings
-from config.database import SessionLocal
+from core.database import SessionLocal
 from models.models import Session as DBSession, Message, User
 from dependencies.dependencies import get_db, get_current_user
 from services.groq_service import generate_response, generate_session_title
