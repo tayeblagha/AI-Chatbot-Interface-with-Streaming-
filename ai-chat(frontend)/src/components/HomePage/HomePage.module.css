@@ -1,0 +1,115 @@
+
+  
+  
+ 
+ 
+  
+  /* Hero Content */
+  .heroContent {
+    text-align: center;
+    max-width: 800px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 2;
+    padding: 2rem;
+  }
+  
+  .heroText {
+    font-size: 1.25rem;
+    color: #a0aec0;
+    margin-bottom: 2rem;
+  }
+  
+  .buttonContainer {
+    margin-top: 2rem;
+  }
+  
+  /* CTA Button */
+  .ctaButton {
+    display: inline-flex;
+    align-items: center;
+    padding: 1rem 2.5rem;
+    border-radius: 50px;
+    background: linear-gradient(45deg, #4e54c8, #8f94fb);
+    color: white;
+    text-decoration: none;
+    font-weight: 600;
+    transition: transform 0.3s ease;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 10px 20px rgba(150, 160, 255, 0.3);
+  }
+  
+  .ctaButton:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 15px 25px rgba(150, 160, 255, 0.4);
+  }
+  
+ 
+
+  /* Base Styles */
+.heroArea {
+    position: relative;
+    overflow-x: hidden;
+  }
+  
+  .heroWrapper {
+    position: relative;
+    min-height: 100vh;
+  }
+  
+  /* Hero Section */
+  .heroSection {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem;
+    padding-top: 120px;
+    position: relative;
+    min-height: 100vh;
+  }
+  
+  .phoneContainer {
+    position: absolute;
+    width: 100%;
+    max-width: 600px;
+    top: 15%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1;
+  }
+  
+  .phoneImageWrapper {
+    position: relative;
+    width: 100%;
+    padding-top: 100%;
+  }
+  
+  .scrollingPhone {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    animation: float 4s ease-in-out infinite;
+    filter: drop-shadow(0 20px 20px rgba(0, 0, 0, 0.15));
+    z-index: 1;
+  }
+  
+  @keyframes float {
+    0% { transform: translate(-50%, 0px); }
+    50% { transform: translate(-50%, -20px); }
+    100% { transform: translate(-50%, 0px); }
+  }
+  
+  /* Hero Content */
+  .heroContent {
+    position: relative;
+    text-align: center;
+    max-width: 800px;
+    margin: 0 auto;
+    z-index: 2;
+    padding: 2rem;
+    margin-top: 60vh;
+  }
+  
+  /* Rest of the CSS remains same as previous solution */

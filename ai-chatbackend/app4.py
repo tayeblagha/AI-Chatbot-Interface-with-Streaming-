@@ -24,10 +24,10 @@ if not GROQ_API_KEY:
 
 ai_db_username = os.getenv("AI_DB_USERNAME")
 ai_db_password = os.getenv("AI_DB_PASSWORD")
-ai_db_name = os.getenv("AI_DB_DATABASE")
+#ai_db_name = os.getenv("testdb1")
 
 # Database configuration
-DATABASE_URL = f"postgresql://{ai_db_username}:{ai_db_password}@localhost/{ai_db_name}"
+DATABASE_URL = f"postgresql://{ai_db_username}:{ai_db_password}@localhost/testdb1"
 engine = create_engine(DATABASE_URL)
 
 # Check database connection
@@ -86,6 +86,8 @@ class Session(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     user = relationship("User", back_populates="sessions")
     messages = relationship("Message", back_populates="session")
+    title = Column(String, nullable=True)  # Add title column
+
 
     __table_args__ = (
         UniqueConstraint('user_id', 'session_number', name='uix_user_session'),
@@ -95,10 +97,14 @@ class Message(Base):
     __tablename__ = "messages"
     id = Column(Integer, primary_key=True)
     session_id = Column(Integer, ForeignKey("sessions.id"))
+    user_id = Column(Integer, ForeignKey("users.id"))  # Added user_id
+
     role = Column(String)
     content = Column(String)
     timestamp = Column(DateTime, default=datetime.utcnow)
     session = relationship("Session", back_populates="messages")
+    user = relationship("User")  # Establish relationship with User model
+
 
 Base.metadata.create_all(bind=engine)
 
@@ -213,7 +219,8 @@ async def websocket_chat(
 
         # Get existing messages
         messages = db.query(Message).filter(
-            Message.session_id == session.id
+            Message.session_id == session.id,
+            Message.user_id == user.id  # Ensure messages belong to the current user
         ).order_by(Message.timestamp).all()
         
         messages_history = [
@@ -266,9 +273,14 @@ async def websocket_chat(
             assistant_message = Message(
                 session_id=session.id,
                 role="assistant",
-                content=response_content
+                content=response_content,
+                user_id=user.id
+
             )
             db.add(assistant_message)
+            # After saving the assistant message
+            await generate_session_title(session.id,user.id, db)
+
             db.commit()
             messages_history.append({"role": "assistant", "content": response_content})
 
@@ -314,6 +326,9 @@ def get_latest_sessions_messages(
 ):
     sessions = db.query(Session).filter(Session.user_id == current_user.id).order_by(desc(Session.created_at)).limit(20).all()
     session_messages = []
+    print(current_user.username)
+    print(current_user.id)
+
     
     for session in sessions:
         messages = db.query(Message).filter(Message.session_id == session.id).order_by(Message.timestamp).all()
@@ -323,10 +338,48 @@ def get_latest_sessions_messages(
                 "role": msg.role,
                 "content": msg.content,
                 "timestamp": msg.timestamp
-            } for msg in messages]
+            } for msg in messages],
+            "title":session.title
         })
     
     return session_messages
+
+async def generate_session_title(session_id: int, user_id: int, db: Session):
+    session = db.query(Session).filter(
+        Session.id == session_id,
+        Session.user_id == user_id  # Ensure the session belongs to the correct user
+    ).first()
+    
+    if not session:
+        print("no seession found")
+        return  # If the session doesn't exist, return early
+
+    messages = db.query(Message).filter(
+        Message.session_id == session_id
+    ).order_by(Message.timestamp).all()
+    
+    if not messages:
+        return  # If there are no messages, do not generate a title
+
+    conversation = "\n".join([msg.content for msg in messages[-5:]])  # Use last 5 messages
+    prompt = f"Create a short title (max 5 words) for this conversation. Return only the title. Conversation:\n{conversation}"
+    
+    response = client.chat.completions.create(
+        model="mixtral-8x7b-32768",
+        messages=[{"role": "system", "content": prompt}],
+        temperature=0.7,
+        max_tokens=10,
+        top_p=1,
+        stop=None,
+    )
+    
+    title = response.choices[0].message.content.strip()
+    print(f"Generated title: {title}")
+    
+    session.title = title  # Update session title
+    db.commit()
+
+
 
 if __name__ == "__main__":
     import uvicorn

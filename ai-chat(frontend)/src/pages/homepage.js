@@ -3,7 +3,7 @@ import HomePage from '../components/HomePage/HomePage';
 import NavBar from '../components/NavMenu/NavBar'
 
 
-function Test () {
+function MyHomePage () {
     return ( 
         <>
         <NavBar></NavBar>
@@ -12,4 +12,4 @@ function Test () {
      );
 }
 
-export default Test;
+export default MyHomePage;
