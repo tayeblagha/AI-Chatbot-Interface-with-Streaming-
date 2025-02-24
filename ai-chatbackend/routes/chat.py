@@ -1,14 +1,14 @@
 from fastapi import APIRouter, FastAPI, WebSocket, HTTPException, Depends, status, Query
 from groq import Groq
 import jwt
-from models.models import Session
 from sqlalchemy import desc, func
 from core.config import settings
 from core.database import SessionLocal
-from models.models import Session as DBSession, Message, User
-from dependencies.dependencies import get_db, get_current_user
+from models.models import Session , Message, User
+from sqlalchemy.orm import Session as SqlalchemySession
+
+from dependencies.dependencies import get_db, get_current_user,get_current_websocket_user
 from services.groq_service import generate_response, generate_session_title
-import asyncio
 from core.config import settings
 
 
@@ -16,7 +16,7 @@ router = APIRouter()
 client = Groq(api_key=settings.GROQ_API_KEY)
 @router.post("/create-session")
 def create_new_session(
-    db: DBSession = Depends(get_db),
+    db: SqlalchemySession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     max_session = db.query(func.max(Session.session_number))\
@@ -42,16 +42,13 @@ def create_new_session(
 async def websocket_chat(
     websocket: WebSocket,
     session_number: int,
-    token: str = Query(...),
+    user: User = Depends(get_current_websocket_user)
 ):
     await websocket.accept()
     db = SessionLocal()
     
     try:
-        # Authenticate user
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        username = payload.get("sub")
-        user = db.query(User).filter(User.username == username).first()
+
         if not user:
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
@@ -141,7 +138,7 @@ async def websocket_chat(
 @router.get("/sessions/{session_number}/messages")
 def get_session_messages(
     session_number: int,
-    db: Session = Depends(get_db),
+    db: SqlalchemySession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     session = db.query(Session).filter(
@@ -169,7 +166,7 @@ def get_session_messages(
 
 @router.get("/sessions/messages")
 def get_latest_sessions_messages(
-    db: Session = Depends(get_db),
+    db: SqlalchemySession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     sessions = db.query(Session).filter(Session.user_id == current_user.id).order_by(desc(Session.created_at)).limit(20).all()

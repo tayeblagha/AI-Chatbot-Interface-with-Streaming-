@@ -146,7 +146,7 @@ const AIChatbot = () => {
         ]);
         buffer = "";
       }
-    }, 2000);
+    }, 1000);
   };
 
   const handleWebSocketClose = () => {
